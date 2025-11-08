@@ -11,85 +11,123 @@ export default function App(){
   const [end, setEnd] = useState("");
   const [numAlAgua, setNumAlAgua] = useState("");
   const [numPremiados, SetNumPremiados] = useState("");
+  const [cantidadSorteos, setCantidadSorteos] = useState("");
   const [pool, setPool] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [drawSteps, setDrawSteps] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
+  const [sorteoActual, setSorteoActual] = useState(1);
   const [widht, height] = useWindowSize();
 
 
   const getRandom = (list) => list [Math.floor(Math.random() * list.length)];
 
-  const startDraw = async () => {
-    //Validación básica para evitar NaN
-    if(!start || !end || numAlAgua <= 0 || numPremiados <= 0) {
-      return alert("Por favor complete todos los campos antes de iniciar.")
-    }
-    if(numAlAgua <= 0 || numPremiados <= 0) {
-      return alert("Los números deben ser mayores a cero.");
-    }
-    if(end <= start) {
-      return alert("El rango es inválido.")
-    }
+  const startDraw = async (sorteoIndex = null) => {
+  // usa el parámetro si viene, si no usa el estado actual
+  const currentSorteo = sorteoIndex ?? sorteoActual;
 
-    // Crea el pool si está vacío y actualizar el estado
-    let currentPool = pool.length > 0 ? [...pool] : Array.from({length: end - start + 1}, (_, i) => start + i);
-    if(pool.length === 0) {
-      setPool(currentPool);
-    }
-    
-    const totalNecesarios = numAlAgua + numPremiados;
-    if(currentPool.length < totalNecesarios) {
-      return alert("No hay suficientes números disponibles para el sorteo.");
-    }
+  if(!start || !end || numAlAgua <= 0 || numPremiados <= 0 || cantidadSorteos <= 0) {
+    return alert("Por favor complete todos los campos antes de iniciar.");
+  }
+  if(end <= start) {
+    return alert("El rango es inválido.");
+  }
 
-    //Mostrar resultados
-    setIsRunning(true);
-    setShowModal(true);
+  // Crear pool si está vacío (no sobrescribir pool si ya hay)
+  let currentPool = pool.length > 0 
+    ? [...pool] 
+    : Array.from({ length: end - start + 1 }, (_, i) => start + i);
 
-    //Simular carga durante 3 segundos
-    await new Promise(resolve => setTimeout(resolve, 3000));
+  // Si queremos proteger el 41 en sorteos previos al 4°, lo excluimos temporalmente
+  if (cantidadSorteos === 4 && currentSorteo < 4) {
+    currentPool = currentPool.filter(n => n !== 41);
+  }
 
-    let tempPool = [...currentPool];
-    let seleccionados = [];
+  // Asegurar que 41 esté en pool si vamos a ejecutar el sorteo 4
+  if (cantidadSorteos === 4 && currentSorteo === 4 && !currentPool.includes(41)) {
+    currentPool.push(41);
+    // opcional: ordenar
+    currentPool.sort((a,b)=>a-b);
+  }
 
-    // Elegir números al agua
-    for (let i = 0; i < numAlAgua; i++){
-      const alAgua = getRandom(tempPool);
-      seleccionados.push({type: "Al agua", number: alAgua});
+  // sólo setear pool si estaba vacío inicialmente
+  if (pool.length === 0) {
+    setPool(currentPool);
+  }
+
+  const totalNecesarios = numAlAgua + numPremiados;
+  if (currentPool.length < totalNecesarios) {
+    return alert("No hay suficientes números disponibles para el sorteo.");
+  }
+
+  setIsRunning(true);
+  setShowModal(true);
+
+  //Simular carga durante 3 segundos
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+
+  let tempPool = [...currentPool];
+  let seleccionados = [];
+
+  // Caso: último sorteo forzado con 41
+  if (cantidadSorteos === 4 && currentSorteo === 4) {
+    // Elegir al agua sin incluir 41
+    for (let i = 0; i < numAlAgua; i++) {
+      const poolSin41 = tempPool.filter(n => n !== 41);
+      const alAgua = getRandom(poolSin41);
+      seleccionados.push({ type: "Al agua", number: alAgua });
       tempPool = tempPool.filter((n) => n !== alAgua);
     }
 
-    // Elegir números premiados
+    // premiado fijo 41
+    seleccionados.push({ type: "Premiado", number: 41 });
+    tempPool = tempPool.filter((n) => n !== 41);
+  } else {
+    // Sorteo normal
+    for (let i = 0; i < numAlAgua; i++) {
+      const alAgua = getRandom(tempPool);
+      seleccionados.push({ type: "Al agua", number: alAgua });
+      tempPool = tempPool.filter((n) => n !== alAgua);
+    }
+
     let nuevosPremiados = [];
-    for (let i = 0; i < numPremiados; i++){
+    for (let i = 0; i < numPremiados; i++) {
       const premiado = getRandom(tempPool);
-      seleccionados.push({type: "Premiado", number: premiado});
+      seleccionados.push({ type: "Premiado", number: premiado });
       nuevosPremiados.push(premiado);
       tempPool = tempPool.filter((n) => n !== premiado);
     }
+  }
 
-    // Actualizar pool, eliminando solo los premiados y al agua
-    const eliminados = [...nuevosPremiados, ...seleccionados.filter(s => s.type === "Al agua").map(s => s.number)];
-    const updatePool = currentPool.filter((n) => !eliminados.includes(n));
-    setPool(updatePool);
+  // Actualizar pool eliminando LOS seleccionados de esta ronda (al agua + premiados)
+  const eliminados = seleccionados.map((s) => s.number);
+  const updatePool = currentPool.filter((n) => !eliminados.includes(n));
+  setPool(updatePool);
 
-    //En vez de mostrar todos los numero automáticamente, se guarda la lista y se muestra el primero
-    setDrawSteps(seleccionados);
-    setCurrentIndex(0); //Se muestra el primer número
-    setIsRunning(false); //Termina la animación de carga
-  };
+  // Mostrar paso a paso
+  setDrawSteps(seleccionados);
+  setCurrentIndex(0);
+  setIsRunning(false);
+};
 
   const nextStep = async () => {
     if(currentIndex < drawSteps.length -1){
       setIsRunning(true); //Se muestra la animación de cargando
 
       //Esperar 2 segundos
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       setCurrentIndex(currentIndex + 1);
       setIsRunning(false); //Mostrar el nuevo número
+    }
+  };
+
+  const siguienteSorteo = () => {
+    const next = sorteoActual + 1;
+    if (next <= cantidadSorteos) {
+      setSorteoActual(next);
+      startDraw(next); //Aqui permite iniciar el siguiente sorteo
     }
   };
 
@@ -132,8 +170,19 @@ export default function App(){
             className='border p-2 rounded w-1/2 focus:ring-2 focus:ring-blue-400 outline-none'
           />
         </div>
+        <input
+          type="number"
+          value={cantidadSorteos}
+          onChange={(e) => setCantidadSorteos(parseInt(e.target.value))}
+          placeholder="Cantidad de sorteos"
+          className="border p-2 rounded w-full focus:ring-2 focus:ring-blue-400 outline-none"
+        />
+
         <button
-        onClick={startDraw}
+        onClick={() => {
+          setSorteoActual(1);
+          startDraw(1);
+        }}
         disabled={isRunning}
         className={`relative w-full py-3 px-6 rounded-lg text-white font-semibold transition-all duration-300 ease-in-out
         ${isRunning ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:scale-105 shadow-lg'}`}>
@@ -155,8 +204,8 @@ export default function App(){
               style={{position: 'absolute', top: 0, left: 0, pointerEvents: 'none'}}/>
             )}
             <header className='mb-6 border-b border-gray-300 pb-3'>
-              <h2 className={`text-3xl font-extrabold text-gray-900 ${isRunning ? 'animate-pulse' : '¡Sorteando!'}`}>
-                {isRunning ? '¡Sorteando!' : 'Resultado'}
+              <h2 className="text-3xl font-extrabold text-gray-900">
+                {isRunning ? "¡Sorteando!" : `Resultado - Sorteo ${sorteoActual} / ${cantidadSorteos}`}
               </h2>
             </header>
             {isRunning ?(
@@ -187,22 +236,35 @@ export default function App(){
                   </div>
                 )}
                 <div className='mt-8 flex justify-center'>
-                  {currentIndex < drawSteps.length -1 ? (
+                  {currentIndex < drawSteps.length - 1 ? (
                     <button
                       onClick={nextStep}
                       className='bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition duration-300 ease-in-out'>
                       Siguiente
                     </button>
                   ):(
-                    <button
-                      onClick={() => {
-                      setShowModal(false);
-                      setDrawSteps([]);
-                      setCurrentIndex(-1);
-                      }}
-                      className='bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition duration-300 ease-in-out'>
-                      Cerrar
-                    </button>
+                    <>
+                      {sorteoActual < cantidadSorteos && (
+                        <button
+                          onClick={siguienteSorteo}
+                          className='bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition duration-300 ease-in-out'
+                          >
+                          Iniciar siguiente sorteo
+                        </button>
+                      )}
+                      {sorteoActual >= cantidadSorteos && (
+                        <button
+                          onClick={() => {setShowModal(false);
+                                          setDrawSteps([]);
+                                          setCurrentIndex(-1);
+                                          setSorteoActual(1);
+                          }}
+                          className='bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition duration-300 ease-in-out'
+                          >
+                          Cerrar
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </>
