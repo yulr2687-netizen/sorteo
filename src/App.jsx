@@ -10,7 +10,7 @@ export default function App(){
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [numAlAgua, setNumAlAgua] = useState("");
-  const [numPremiados, SetNumPremiados] = useState("");
+  const [numPremiados, setNumPremiados] = useState("");
   const [cantidadSorteos, setCantidadSorteos] = useState("");
   const [pool, setPool] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
@@ -126,10 +126,26 @@ export default function App(){
 
   const siguienteSorteo = () => {
     const next = sorteoActual + 1;
-    if (next <= cantidadSorteos) {
+    //Se cierra si llegamos al ultimo sorteo
+    if (sorteoActual >= cantidadSorteos) {
+      //Se cierra el modal
+      setShowModal(false);
+
+      //Resetear todo
+      setDrawSteps([]);
+      setCurrentIndex(-1);
+      setSorteoActual(1);
+      setPool([]);
+      setStart("");
+      setEnd("");
+      setNumAlAgua("");
+      setNumPremiados("");
+      setCantidadSorteos("");
+      return;
+    }
+    //Si no es el ultimo sorteo, se avanza al siguiente
       setSorteoActual(next);
       startDraw(next); //Aqui permite iniciar el siguiente sorteo
-    }
   };
 
   const regenerarPremiado = async () => {
@@ -183,7 +199,7 @@ export default function App(){
           <input
             type='number'
             value={numPremiados}
-            onChange={(e) => SetNumPremiados(parseInt(e.target.value))}
+            onChange={(e) => setNumPremiados(parseInt(e.target.value))}
             placeholder='N° premiados'
             className='border p-2 rounded w-1/2 focus:ring-2 focus:ring-blue-400 outline-none'
           />
