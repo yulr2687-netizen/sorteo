@@ -1,9 +1,13 @@
 {
-  "homepage": "https://yulr2687-netizen.github.io/sorteo",
+  "name": "sorteo-rifa",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-  "build": "vite build",
-  "predeploy": "npm run build",
-  "deploy": "gh-pages -d dist"
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@react-hook/window-size": "^3.1.1",

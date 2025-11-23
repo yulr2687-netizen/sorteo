@@ -19,6 +19,7 @@ export default function App(){
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [sorteoActual, setSorteoActual] = useState(1);
   const [widht, height] = useWindowSize();
+  const [reasignando, setReasignando] = useState(false);
 
 
   const getRandom = (list) => list [Math.floor(Math.random() * list.length)];
@@ -130,6 +131,23 @@ export default function App(){
       startDraw(next); //Aqui permite iniciar el siguiente sorteo
     }
   };
+
+  const regenerarPremiado = async () => {
+    setReasignando(true);
+
+    //Se simula la animacion de carga por 2 segundos
+    await new Promise(r => setTimeout(r, 2000));
+
+    const temPool = [...pool];
+    const nuevo = getRandom(temPool);
+
+    //Reemplazar el resultado final del sorteo
+    const copia = [...drawSteps];
+    copia[copia.length - 1] = { type: "Premiado", number: nuevo};
+
+    setDrawSteps(copia);
+    setReasignando(false);
+  }
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 flex flex-col items-center justify-center p-6'>
@@ -244,15 +262,43 @@ export default function App(){
                     </button>
                   ):(
                     <>
-                      {sorteoActual < cantidadSorteos && (
+                    {/** Si el resultado final es premiado mostrar los dos botones */}
+                    {drawSteps[currentIndex].type === "Premiado" 
+                    && (
+                      <div className='flex flex-col items-center space-y-4'>
+                        {/**Boton SI asignado */}
                         <button
                           onClick={siguienteSorteo}
-                          className='bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition duration-300 ease-in-out'
+                          className='bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition duration-300 ease-in-out w-64'
                           >
-                          Iniciar siguiente sorteo
+                            Sí, premiado asignado
                         </button>
-                      )}
-                      {sorteoActual >= cantidadSorteos && (
+                        {/**Boton NO asignado */}
+                        <button
+                          onClick={regenerarPremiado}
+                          disabled={reasignando}
+                          className={`${reasignando ? "bg-gray-400" : "bg-yellow-500 hover:bg-yellow-600"} 
+                                    text-white font-semibold px-6 py-3 rounded-xl shadow-md transition duration-300 ease-in-out w-64`}
+                          >
+                            {reasignando ? "Generando nuevo..." : "No, volver a sortear"}
+                        </button>
+                      </div>
+                    )}
+
+                    {/*Cuando ya no queden sorteos */}
+                    {drawSteps[currentIndex].type !== "Premiado"
+                    && (
+                      <>
+                        {sorteoActual < cantidadSorteos && (
+                          <button
+                            onClick={siguienteSorteo}
+                            className='bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md transition duration-300 ease-in-out'
+                            >
+                            Iniciar siguiente sorteo
+                          </button>
+                        )}
+
+                        {sorteoActual >= cantidadSorteos && (
                         <button
                           onClick={() => {setShowModal(false);
                                           setDrawSteps([]);
@@ -264,6 +310,8 @@ export default function App(){
                           Cerrar
                         </button>
                       )}
+                      </>
+                    )}
                     </>
                   )}
                 </div>
